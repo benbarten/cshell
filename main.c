@@ -16,6 +16,7 @@
 #define CD "cd"
 #define ECHO "echo"
 #define EXIT "exit"
+#define ENV "env"
 
 void handle(char **args, int count)
 {
@@ -37,6 +38,10 @@ void handle(char **args, int count)
     {
         exit(0);
     }
+    else if (strncmp(cmd, ENV, 3) == 0)
+    {
+        env(count, args);
+    }
     else
     {
         execute(args);
@@ -56,7 +61,7 @@ int main()
 
         input[strcspn(input, "\n")] = 0; // remove the trailing new line character
 
-        int count;
+        int count = 0;
         char **args = split(input, DELIM, &count);
 
         expand_env_vars(args);
