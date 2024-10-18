@@ -2,8 +2,8 @@
 #define BUILTIN_H
 
 void cd(char* path);
-char* pwd();
-char* echo(char** input);
-char** env(int argc, char **args);
+void pwd();
+void echo(char** input, int fd);
+void env(int argc, char **args);
 
 #endif // BUILTIN_H

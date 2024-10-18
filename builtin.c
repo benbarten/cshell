@@ -52,32 +52,51 @@ void cd(char *path)
 	setenv("PWD", resolved_path, 1);
 }
 
-char *pwd()
+void pwd()
 {
 	char *cwd = malloc(PATH_MAX * sizeof(char));
 	if (cwd == NULL)
 	{
 		perror("failed to allocate memory");
-		return "";
+		return;
 	}
 	if (getcwd(cwd, PATH_MAX) == NULL)
 	{
 		perror("failed to get current working directory");
 		free(cwd);
-		return "";
+		return;
 	}
-	return cwd;
+
+	printf("%s\n", cwd);
+	free(cwd);
 }
 
-char *echo(char **input)
+void echo(char **input, int fd)
 {
+	if (fd != STDIN_FILENO)
+	{
+		char buffer[1024];
+		ssize_t bytesRead;
+		while ((bytesRead = read(fd, buffer, sizeof(buffer) - 1)) > 0)
+		{
+			buffer[bytesRead] = '\0';
+			printf("%s", buffer);
+		}
+
+		if (bytesRead < 0)
+		{
+			perror("read");
+		}
+		return;
+	}
+
 	int size = 0;
 	for (int i = 1; input[i] != NULL; i++)
 	{
 		size += strlen(input[i]);
 	}
 
-	char *output = malloc(size * sizeof(char*));
+	char *output = malloc(size * sizeof(char *));
 
 	for (int i = 1; input[i] != NULL; i++)
 	{
@@ -89,9 +108,9 @@ char *echo(char **input)
 			continue;
 		}
 
-		char* out;
+		char *out;
 
-		if (input[i][0] == '"' && input[i][len-1] == '"')
+		if (input[i][0] == '"' && input[i][len - 1] == '"')
 		{
 			strncpy(out, input[i] + 1, len - 2);
 		}
@@ -99,7 +118,7 @@ char *echo(char **input)
 		{
 			out = input[i];
 		}
-		
+
 		if (output[0] != '\0')
 		{
 			strcat(output, " ");
@@ -107,10 +126,10 @@ char *echo(char **input)
 		strcat(output, out);
 	}
 
-	return output;
+	printf("%s\n", output);
 }
 
-int set_env_var(const char *name, const char *value)
+static int set_env_var(const char *name, const char *value)
 {
 	if (name == NULL || value == NULL)
 	{
@@ -128,12 +147,12 @@ int set_env_var(const char *name, const char *value)
 	return 0;
 }
 
-char *get_env_var(const char *name)
+static void get_env_var(const char *name)
 {
 	if (name == NULL)
 	{
 		fprintf(stderr, "Error: Name must not be NULL\n");
-		return NULL;
+		return;
 	}
 
 	char *value = getenv(name);
@@ -146,57 +165,29 @@ char *get_env_var(const char *name)
 		printf("%s=%s\n", name, value);
 	}
 
-	return value;
+	return;
 }
 
-char **env(int argc, char **args)
+void env(int argc, char **args)
 {
-	char** output;
 	if (argc == 1)
 	{
-		// List all environment variables
-        extern char** environ;
-        int env_count = 0;
-        
-        while (environ[env_count] != NULL) {
-            env_count++;
-        }
-        
-        output = malloc((env_count + 1) * sizeof(char*));
-        if (output == NULL) {
-            perror("Failed to allocate memory for environment variables");
-            return NULL;
-        }
-        
-        for (int i = 0; i < env_count; i++) {
-            output[i] = strdup(environ[i]);
-            if (output[i] == NULL) {
-                perror("Failed to duplicate environment variable");
-                for (int j = 0; j < i; j++) {
-                    free(output[j]);
-                }
-                free(output);
-                return NULL;
-            }
-        }
-        output[env_count] = NULL;
+		extern char **environ;
+		for (int i = 0; environ[i] != NULL; i++)
+		{
+			printf("%s\n", environ[i]);
+		}
 	}
 	else if (argc == 2)
 	{
-		// return the value of the specified environment variable
-		char* env_var = get_env_var(args[1]);
-		output = malloc(sizeof(char*));
-		output[0] = env_var;
+		get_env_var(args[1]);
 	}
 	else if (argc == 3)
 	{
-		// set the value of the specified environment variable
 		set_env_var(args[1], args[2]);
 	}
 	else
 	{
 		fprintf(stderr, "Usage: env [VARIABLE] [VALUE]\n");
 	}
-
-	return output;
 }

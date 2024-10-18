@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <ctype.h>
 #include "builtin.h"
 #include "external.h"
@@ -19,16 +20,54 @@
 #define ENV "env"
 
 // handle handles the args provided by the user and executes the command returning its output
-char **handle(char **args, int count)
+void handle(char **args, int count)
 {
+	int fd_in = -1, fd_out = -1;
+	int saved_stdin = dup(STDIN_FILENO);
+	int saved_stdout = dup(STDOUT_FILENO);
+
+	for (int i = 0; i < count; i++)
+	{
+		if (strcmp(args[i], "<") == 0)
+		{
+			fd_in = open(args[i + 1], O_RDONLY);
+			if (fd_in < 0)
+			{
+				perror("open");
+				return;
+			}
+			dup2(fd_in, STDIN_FILENO);
+			args[i] = NULL;
+		}
+		else if (strcmp(args[i], ">") == 0)
+		{
+			fd_out = open(args[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+			if (fd_out < 0)
+			{
+				perror("open");
+				return;
+			}
+			dup2(fd_out, STDOUT_FILENO);
+			args[i] = NULL;
+		}
+		else if (strcmp(args[i], ">>") == 0)
+		{
+			fd_out = open(args[i + 1], O_WRONLY | O_CREAT | O_APPEND, 0644);
+			if (fd_out < 0)
+			{
+				perror("open");
+				return;
+			}
+			dup2(fd_out, STDOUT_FILENO);
+			args[i] = NULL;
+		}
+	}
+
 	char *cmd = args[0];
-	char** output = NULL;
 
 	if (strncmp(cmd, PWD, 3) == 0)
 	{
-		char* out = pwd();
-		output = malloc(sizeof(char*));
-		output[0] = out;
+		pwd();
 	}
 	else if (strncmp(cmd, CD, 2) == 0)
 	{
@@ -36,9 +75,7 @@ char **handle(char **args, int count)
 	}
 	else if (strncmp(cmd, ECHO, 4) == 0)
 	{
-		char* out = echo(args);
-		output = malloc(sizeof(char*));
-		output[0] = out;
+		echo(args, fd_in);
 	}
 	else if (strncmp(cmd, EXIT, 4) == 0)
 	{
@@ -46,14 +83,22 @@ char **handle(char **args, int count)
 	}
 	else if (strncmp(cmd, ENV, 3) == 0)
 	{
-		output = env(count, args);
+		env(count, args);
 	}
 	else
 	{
 		execute(args);
 	}
 
-	return output;
+	dup2(saved_stdin, STDIN_FILENO);
+	dup2(saved_stdout, STDOUT_FILENO);
+	close(saved_stdin);
+	close(saved_stdout);
+	if (fd_in != -1)
+		close(fd_in);
+	if (fd_out != -1)
+		close(fd_out);
+	return;
 }
 
 int main()
@@ -79,17 +124,7 @@ int main()
 			continue;
 		}
 
-		char **out = handle(args, count);
-
-		if (out != NULL)
-		{
-			for (int i = 0; out[i] != NULL; i++)
-			{
-				printf("%s\n", out[i]);
-			}
-
-			free (out);
-		}
+		handle(args, count);
 	};
 
 	return 0;
