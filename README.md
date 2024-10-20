@@ -9,9 +9,10 @@ Built-in commands:
 * `cd <directory>`: Change the current directory.
 * `echo <message>`: Print a message to the terminal.
 * `exit`: Exit the shell.
+* `env`: Get/set/list environment variables.
 * Execution of external commands in your `$PATH`.
 * Environment variable expansion.
-* Get/set/list environment variables.
+* Input / Output redirection with `<` and `>`
 
 ### Getting Started
 
