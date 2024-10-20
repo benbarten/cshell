@@ -18,7 +18,7 @@ void cd(char *path)
 		if (target == NULL)
 		{
 			perror("Failed to get current working directory");
-			return;
+			exit(1);
 		}
 	}
 	else if (path[0] == '~')
@@ -27,7 +27,7 @@ void cd(char *path)
 		if (home == NULL)
 		{
 			perror("Failed to get current working directory");
-			return;
+			exit(1);
 		}
 		char *trailing = malloc(PATH_MAX * sizeof(char));
 		strncpy(trailing, path + 1, strlen(path) - 1);
@@ -46,10 +46,11 @@ void cd(char *path)
 	if (chdir(resolved_path) != 0)
 	{
 		perror("Failed to change directory");
-		return;
+		exit(1);
 	}
 
 	setenv("PWD", resolved_path, 1);
+	exit(0);
 }
 
 void pwd()
@@ -58,22 +59,23 @@ void pwd()
 	if (cwd == NULL)
 	{
 		perror("failed to allocate memory");
-		return;
+		exit(1);
 	}
 	if (getcwd(cwd, PATH_MAX) == NULL)
 	{
 		perror("failed to get current working directory");
 		free(cwd);
-		return;
+		exit(1);
 	}
 
 	printf("%s\n", cwd);
 	free(cwd);
+	exit(0);
 }
 
 void echo(char **input, int fd)
 {
-	if (fd != STDIN_FILENO)
+	if (fd != -1)
 	{
 		char buffer[1024];
 		ssize_t bytesRead;
@@ -87,7 +89,7 @@ void echo(char **input, int fd)
 		{
 			perror("read");
 		}
-		return;
+		exit(0);
 	}
 
 	int size = 0;
@@ -127,6 +129,7 @@ void echo(char **input, int fd)
 	}
 
 	printf("%s\n", output);
+	exit(0);
 }
 
 static int set_env_var(const char *name, const char *value)
@@ -190,4 +193,5 @@ void env(int argc, char **args)
 	{
 		fprintf(stderr, "Usage: env [VARIABLE] [VALUE]\n");
 	}
+	exit(0);
 }

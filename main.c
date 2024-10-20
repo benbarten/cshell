@@ -4,8 +4,8 @@
 #include <string.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <errno.h>
 #include "builtin.h"
-#include "external.h"
 #include "parse.h"
 
 #define PROMPT "$ "
@@ -19,8 +19,7 @@
 #define EXIT "exit"
 #define ENV "env"
 
-// handle handles the args provided by the user and executes the command returning its output
-void handle(char **args, int count)
+void execute(char **args, int count)
 {
 	int fd_in = -1, fd_out = -1;
 	int saved_stdin = dup(STDIN_FILENO);
@@ -87,7 +86,10 @@ void handle(char **args, int count)
 	}
 	else
 	{
-		execute(args);
+		execvp(args[0], args);
+
+		fprintf(stderr, "execvp failed for %s: %s\n", args[0], strerror(errno));
+		perror("execvp error");
 	}
 
 	dup2(saved_stdin, STDIN_FILENO);
@@ -98,7 +100,42 @@ void handle(char **args, int count)
 		close(fd_in);
 	if (fd_out != -1)
 		close(fd_out);
-	return;
+}
+
+int handle(char **args, int count)
+{
+	if (args[0] == NULL)
+	{
+		fprintf(stderr, "Error: No command provided\n");
+		return -1;
+	}
+
+	pid_t pid = fork();
+	if (pid == -1)
+	{
+		perror("fork failed");
+		return -1;
+	}
+	else if (pid == 0)
+	{
+        execute(args, count);
+        exit(0);
+	}
+	else
+	{
+		int status;
+		waitpid(pid, &status, 0);
+		if (WIFEXITED(status))
+		{
+			return WEXITSTATUS(status);
+		}
+		else
+		{
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 int main()
