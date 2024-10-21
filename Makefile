@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c99
-SRCS = main.c builtin.c external.c parse.c
+SRCS = main.c builtin.c parse.c
 TARGET = cshell
 
 .PHONY: build clean run

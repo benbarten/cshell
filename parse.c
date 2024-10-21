@@ -4,7 +4,6 @@
 #include <string.h>
 #include <ctype.h>
 #include "builtin.h"
-#include "external.h"
 
 #define MAX_ENV_LENGTH 1024
 

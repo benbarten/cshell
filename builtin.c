@@ -18,7 +18,7 @@ void cd(char *path)
 		if (target == NULL)
 		{
 			perror("Failed to get current working directory");
-			exit(1);
+			return;
 		}
 	}
 	else if (path[0] == '~')
@@ -27,7 +27,7 @@ void cd(char *path)
 		if (home == NULL)
 		{
 			perror("Failed to get current working directory");
-			exit(1);
+			return;
 		}
 		char *trailing = malloc(PATH_MAX * sizeof(char));
 		strncpy(trailing, path + 1, strlen(path) - 1);
@@ -46,11 +46,10 @@ void cd(char *path)
 	if (chdir(resolved_path) != 0)
 	{
 		perror("Failed to change directory");
-		exit(1);
+		return;
 	}
 
 	setenv("PWD", resolved_path, 1);
-	exit(0);
 }
 
 void pwd()
@@ -73,63 +72,22 @@ void pwd()
 	exit(0);
 }
 
-void echo(char **input, int fd)
-{
-	if (fd != -1)
-	{
-		char buffer[1024];
-		ssize_t bytesRead;
-		while ((bytesRead = read(fd, buffer, sizeof(buffer) - 1)) > 0)
-		{
-			buffer[bytesRead] = '\0';
-			printf("%s", buffer);
-		}
-
-		if (bytesRead < 0)
-		{
-			perror("read");
-		}
-		exit(0);
-	}
-
-	int size = 0;
-	for (int i = 1; input[i] != NULL; i++)
-	{
-		size += strlen(input[i]);
-	}
-
-	char *output = malloc(size * sizeof(char *));
-
-	for (int i = 1; input[i] != NULL; i++)
-	{
-		// TODO handle quotes across multiple arguments
-
-		int len = strlen(input[i]);
-		if (len == 0)
-		{
-			continue;
-		}
-
-		char *out;
-
-		if (input[i][0] == '"' && input[i][len - 1] == '"')
-		{
-			strncpy(out, input[i] + 1, len - 2);
-		}
-		else
-		{
-			out = input[i];
-		}
-
-		if (output[0] != '\0')
-		{
-			strcat(output, " ");
-		}
-		strcat(output, out);
-	}
-
-	printf("%s\n", output);
-	exit(0);
+void echo(char **args, int fd_in) {
+    if (args[1] == NULL) {
+        char buffer[1024];
+        ssize_t bytes_read;
+        while ((bytes_read = read(fd_in, buffer, sizeof(buffer))) > 0) {
+            write(STDOUT_FILENO, buffer, bytes_read);
+        }
+    } else {
+        for (int i = 1; args[i] != NULL; i++) {
+            printf("%s", args[i]);
+            if (args[i+1] != NULL) {
+                printf(" ");
+            }
+        }
+        printf("\n");
+    }
 }
 
 static int set_env_var(const char *name, const char *value)
