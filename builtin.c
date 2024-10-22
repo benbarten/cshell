@@ -80,7 +80,7 @@ void echo(char **args, int fd_in) {
             write(STDOUT_FILENO, buffer, bytes_read);
         }
     } else {
-        for (int i = 1; args[i] != NULL; i++) {
+        for (size_t i = 1; args[i] != NULL; i++) {
             printf("%s", args[i]);
             if (args[i+1] != NULL) {
                 printf(" ");
@@ -116,7 +116,7 @@ static void get_env_var(const char *name)
 		return;
 	}
 
-	char *value = getenv(name);
+	const char *value = getenv(name);
 	if (value == NULL)
 	{
 		printf("Environment variable %s not found\n", name);
@@ -125,8 +125,6 @@ static void get_env_var(const char *name)
 	{
 		printf("%s=%s\n", name, value);
 	}
-
-	return;
 }
 
 void env(int argc, char **args)
@@ -134,7 +132,7 @@ void env(int argc, char **args)
 	if (argc == 1)
 	{
 		extern char **environ;
-		for (int i = 0; environ[i] != NULL; i++)
+		for (size_t i = 0; environ[i] != NULL; i++)
 		{
 			printf("%s\n", environ[i]);
 		}

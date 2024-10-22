@@ -7,19 +7,19 @@
 
 #define MAX_ENV_LENGTH 1024
 
-char **split(char *input, char *delim, int *count)
+char **split(char *input, size_t *argsc, char *delim)
 {
     // strtok modifies the string, so we need to duplicate the pointer here in order to free it up later on
     char *tmp = strdup(input);
     char *token = strtok(tmp, delim);
     while (token != NULL)
     {
-        *count = *count + 1;
+        *argsc = *argsc + 1;
         token = strtok(NULL, delim);
     }
     free(tmp);
 
-    char **tokens = malloc((*count + 1) * sizeof(char *));
+    char **tokens = malloc((*argsc + 1) * sizeof(char *));
     if (tokens == NULL)
     {
         return NULL;
@@ -29,7 +29,7 @@ char **split(char *input, char *delim, int *count)
     token = strtok(input, delim);
     int i = 0;
 
-    while (token != NULL && i < *count)
+    while (token != NULL && i < *argsc)
     {
         tokens[i] = strdup(token);
         token = strtok(NULL, delim);

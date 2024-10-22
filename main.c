@@ -23,34 +23,68 @@ void execute(char **args, int count, int fd_in)
 {
 	char *cmd = args[0];
 
-	if (strncmp(cmd, PWD, 3) == 0)
+	if (cmd == NULL)
 	{
-		pwd();
+		fprintf(stderr, "Error: No command provided\n");
+		return;
 	}
-	else if (strncmp(cmd, ECHO, 4) == 0)
+
+	// EXIT and CD are both commands which transform the current process
+	if (strcmp(cmd, EXIT) == 0)
 	{
-		echo(args, fd_in);
+		exit(0);
 	}
-	else if (strncmp(cmd, ENV, 3) == 0)
+	else if (strcmp(cmd, CD) == 0)
 	{
-		env(count, args);
+		cd(args[1]);
 	}
 	else
 	{
-		execvp(args[0], args);
+		// any other process will be forked
 
-		fprintf(stderr, "execvp failed for %s: %s\n", args[0], strerror(errno));
-		perror("execvp error");
+		pid_t pid = fork();
+		if (pid == -1)
+		{
+			perror("fork failed");
+			return;
+		}
+		else if (pid == 0)
+		{
+			if (strcmp(cmd, PWD) == 0)
+			{
+				pwd();
+			}
+			else if (strcmp(cmd, ECHO) == 0)
+			{
+				echo(args, fd_in);
+			}
+			else if (strcmp(cmd, ENV) == 0)
+			{
+				env(count, args);
+			}
+			else
+			{
+				execvp(args[0], args);
+				fprintf(stderr, "command failed %s: %s\n", args[0], strerror(errno));
+			}
+		}
+		else
+		{
+			int status;
+			waitpid(pid, &status, 0);
+		}
 	}
 }
 
-int handle(char **args, int count)
+int handle(char **args, size_t argsc)
 {
+	// save stdin/stdout file descriptors for io redirection
 	int fd_in = -1, fd_out = -1;
 	int saved_stdin = dup(STDIN_FILENO);
 	int saved_stdout = dup(STDOUT_FILENO);
 
-	for (int i = 0; i < count; i++)
+	// parse io redirection args
+	for (size_t i = 0; i < argsc; i++)
 	{
 		if (strcmp(args[i], "<") == 0)
 		{
@@ -87,46 +121,10 @@ int handle(char **args, int count)
 		}
 	}
 
-	char* cmd = args[0];
+	// execute the command
+	execute(args, argsc, fd_in);
 
-	if (cmd == NULL)
-	{
-		fprintf(stderr, "Error: No command provided\n");
-		return -1;
-	}
-
-	if (strncmp(cmd, EXIT, 4) == 0)
-	{
-		exit(0);
-	} else if (strncmp(cmd, CD, 2) == 0)
-	{
-		cd(args[1]);
-	} else {
-		pid_t pid = fork();
-		if (pid == -1)
-		{
-			perror("fork failed");
-			return -1;
-		}
-		else if (pid == 0)
-		{
-			execute(args, count, fd_in);
-		}
-		else
-		{
-			int status;
-			waitpid(pid, &status, 0);
-			if (WIFEXITED(status))
-			{
-				return WEXITSTATUS(status);
-			}
-			else
-			{
-				return -1;
-			}
-		}
-	}
-
+	// restore stdin/stdout file descriptors
 	dup2(saved_stdin, STDIN_FILENO);
 	dup2(saved_stdout, STDOUT_FILENO);
 	close(saved_stdin);
@@ -152,17 +150,17 @@ int main()
 
 		input[strcspn(input, "\n")] = 0; // remove the trailing new line character
 
-		int count = 0;
-		char **args = split(input, DELIM, &count);
+		size_t argsc = 0;
+		char **args = split(input, &argsc, DELIM);
 
 		expand_env_vars(args);
 
-		if (count == 0)
+		if (argsc == 0)
 		{
 			continue;
 		}
 
-		handle(args, count);
+		handle(args, argsc);
 	};
 
 	return 0;
