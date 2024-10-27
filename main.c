@@ -29,55 +29,38 @@ void execute(char **args, int count, int fd_in)
 		return;
 	}
 
-	// EXIT and CD are both commands which transform the current process
-	if (strcmp(cmd, EXIT) == 0)
+	if (strcmp(cmd, PWD) == 0)
 	{
-		exit(0);
+		pwd();
 	}
-	else if (strcmp(cmd, CD) == 0)
+	else if (strcmp(cmd, ECHO) == 0)
 	{
-		cd(args[1]);
+		echo(args, fd_in);
+	}
+	else if (strcmp(cmd, ENV) == 0)
+	{
+		env(count, args);
 	}
 	else
 	{
-		// any other process will be forked
-
-		pid_t pid = fork();
-		if (pid == -1)
-		{
-			perror("fork failed");
-			return;
-		}
-		else if (pid == 0)
-		{
-			if (strcmp(cmd, PWD) == 0)
-			{
-				pwd();
-			}
-			else if (strcmp(cmd, ECHO) == 0)
-			{
-				echo(args, fd_in);
-			}
-			else if (strcmp(cmd, ENV) == 0)
-			{
-				env(count, args);
-			}
-			else
-			{
-				execvp(args[0], args);
-				fprintf(stderr, "command failed %s: %s\n", args[0], strerror(errno));
-			}
-		}
-		else
-		{
-			int status;
-			waitpid(pid, &status, 0);
-		}
+		execvp(args[0], args);
+		fprintf(stderr, "command failed %s: %s\n", args[0], strerror(errno));
 	}
 }
 
 int handle(char **args, size_t argsc)
 {
+	// EXIT and CD are both commands which transform the current process
+	if (strcmp(args[0], EXIT) == 0)
+	{
+		exit(0);
+	}
+	else if (strcmp(args[0], CD) == 0)
+	{
+		cd(args[1]);
+		return 0;
+	}
+
 	// save stdin/stdout file descriptors for io redirection
 	int fd_in = -1, fd_out = -1;
 	int saved_stdin = dup(STDIN_FILENO);
@@ -118,6 +101,39 @@ int handle(char **args, size_t argsc)
 			}
 			dup2(fd_out, STDOUT_FILENO);
 			args[i] = NULL;
+		}
+		else if (strcmp(args[i], "|") == 0)
+		{
+			int pipefd[2];
+			if (pipe(pipefd) == -1)
+			{
+				perror("pipe");
+				exit(EXIT_FAILURE);
+			}
+
+			pid_t pid = fork();
+			if (pid == -1)
+			{
+				perror("fork");
+				exit(EXIT_FAILURE);
+			}
+
+			if (pid == 0)
+			{ // child process
+				close(pipefd[0]);
+				dup2(pipefd[1], STDOUT_FILENO);
+				close(pipefd[1]);
+				execute(args, i, fd_in);
+				exit(EXIT_SUCCESS);
+			}
+			else
+			{ // parent process
+				close(pipefd[1]);
+				dup2(pipefd[0], fd_in);
+				close(pipefd[0]);
+				wait(NULL);
+				args[i] = NULL;
+			}
 		}
 	}
 

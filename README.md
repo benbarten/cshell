@@ -13,6 +13,7 @@ Built-in commands:
 * Execution of external commands in your `$PATH`.
 * Environment variable expansion.
 * Input / Output redirection with `<` and `>`
+* Piping via `<command> | <command>`
 
 ### Getting Started
 
